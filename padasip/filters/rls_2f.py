@@ -166,7 +166,7 @@ import numpy as np
 
 from padasip.filters.base_filteP_2 import AdaptiveFilter
 
-class FilterRLS(AdaptiveFilter):
+class FilterRLS_2f(AdaptiveFilter):
     """
     Adaptive RLS filter.
     

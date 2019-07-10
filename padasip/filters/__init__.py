@@ -174,6 +174,7 @@ from padasip.filters.fxlms import FilterFxLMS
 from padasip.filters.ocnlms import FilterOCNLMS
 from padasip.filters.gngd import FilterGNGD
 from padasip.filters.rls import FilterRLS
+from padasip.filters.rls_2f import FilterRLS_2f
 from padasip.filters.ap import FilterAP
 
 def filter_data(d, x, model="lms", **kwargs):
