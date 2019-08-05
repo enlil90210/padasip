@@ -164,7 +164,7 @@ Code Explanation
 """
 import numpy as np
 
-from padasip.filters.base_filteP_2 import AdaptiveFilter
+from padasip.filters.base_filter_2 import AdaptiveFilter
 
 class FilterRLS_2f(AdaptiveFilter):
     """
@@ -193,7 +193,7 @@ class FilterRLS_2f(AdaptiveFilter):
         * "zeros" : create zero value weights
     """ 
 
-    def __init__(self, n, mu=0.99, eps=0.1, w="random"):
+    def __init__(self, n, mu=[0.99, 0.99], eps=0.1, w="random"):
         self.kind = "RLS filter"
         if type(n) == int:
             self.n = n
@@ -216,15 +216,21 @@ class FilterRLS_2f(AdaptiveFilter):
 
         * `x` : input array (1-dimensional array)
         """
-        y = np.dot(self.w, x)
-        L_1 = (P_1*x[0])/(self.mu[0]+P_1*x[0]**2)
-        L_2 = (P_2*x[1])/(self.mu[1]+P_2*x[1]**2)
 
-        factor = 1 + (P_1*x[0]**2)/self.mu[0] + (P_2*x[1]**2)/self.mu[1] 
-        L = 1/factor*np.array((P_1*x[0]**2)/self.mu[0], (P_2*x[1]**2)/self.mu[1])
-        P_1 = 1/self.mu[0]*(np.identity(n)-L_1*x[0])*P_1
-        P_2 = 1/self.mu[1]*(np.identity(n)-L_2*x[1])*P_2
-        dw = L*(y-np.dot(x,self.w))
+        y = np.dot(self.w, x)
+        e = d - y
+
+        L_1 = (self.P_1*x[0])/(self.mu[0]+self.P_1*x[0]**2)
+        L_2 = (self.P_2 * x[1]) / (self.mu[1] + self.P_2 * x[1] ** 2)
+
+        factor = 1 + (self.P_1*x[0]**2)/self.mu[0] + (self.P_2*x[1]**2)/self.mu[1]
+
+        L = (1/factor)*np.array([self.P_1*x[0]/self.mu[0], self.P_2*x[1]/self.mu[1]])
+
+        dw = L*e
+
+        self.P_1 = (1/self.mu[0])*(1-L_1*x[0])*self.P_1
+        self.P_2 = (1/self.mu[1])*(1-L_2*x[1])*self.P_2
 
         self.w += dw
 
@@ -250,7 +256,7 @@ class FilterRLS_2f(AdaptiveFilter):
         * `w` : history of all weights (2 dimensional array).
           Every row is set of the weights for given sample.
         """
-        # measure the data and check if the dimmension agree
+        # measure the data and check if the dimension agree
         N = len(x)
         if not len(d) == N:
             raise ValueError('The length of vector d and matrix x must agree.')  
@@ -259,7 +265,7 @@ class FilterRLS_2f(AdaptiveFilter):
         try:    
             x = np.array(x)
             d = np.array(d)
-        except:
+        except Exception:
             raise ValueError('Impossible to convert x or d to a numpy array')
         # create empty arrays
         y = np.zeros(N)
@@ -267,13 +273,22 @@ class FilterRLS_2f(AdaptiveFilter):
         self.w_history = np.zeros((N, self.n))
         # adaptation loop
         for k in range(N):
-            self.w_history[k,:] = self.w
+            self.w_history[k, :] = self.w
             y[k] = np.dot(self.w, x[k])
             e[k] = d[k] - y[k]
-            Ru = np.dot(np.dot(np.dot(self.R,x[k]),x[k].T),self.R)
-            Rd = self.mu + np.dot(np.dot(x[k],self.R),x[k].T)
-            self.R = 1/self.mu * (self.R - Ru/Rd)
-            dw = np.dot(self.R, x[k].T) * e[k]
+
+            L_1 = (self.P_1 * x[k][0]) / (self.mu[0] + self.P_1 * x[k][0] ** 2)
+            L_2 = (self.P_2 * x[k][1]) / (self.mu[1] + self.P_2 * x[k][1] ** 2)
+
+            factor = 1 + (self.P_1 * x[k][0] ** 2) / self.mu[0] + (self.P_2 * x[k][1] ** 2) / self.mu[1]
+
+            L = (1 / factor) * np.array([self.P_1 * x[k][0] / self.mu[0], self.P_2 * x[k][1] / self.mu[1]])
+
+            dw = L * e[k]
+
+            self.P_1 = (1 / self.mu[0]) * (1 - L_1 * x[k][0]) * self.P_1
+            self.P_2 = (1 / self.mu[1]) * (1 - L_2 * x[k][1]) * self.P_2
+
             self.w += dw
+
         return y, e, self.w_history
-        
